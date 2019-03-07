@@ -2,6 +2,9 @@ package org.dicthub.plugin.com_google_translate
 
 
 import org.dicthub.plugin.shared.util.*
+import org.w3c.dom.get
+import org.w3c.dom.set
+import kotlin.browser.localStorage
 import kotlin.js.Promise
 import kotlin.js.json
 
@@ -41,8 +44,36 @@ class GoogleTranslationProvider constructor(
     override fun canTranslate(query: Query) = query.getFrom() != query.getTo()
 
     override fun translate(query: Query): Promise<String> {
+        return Promise { resolve, _ ->
+            translateUsingCachedToken(query).then(resolve).catch {
+                translateUsingNewToken(query).then(resolve)
+            }
+        }
+    }
 
+    override fun updateOptions(options: MetaOptions) {
+        useCnDomain = options[OPTION_USE_GOOGLE_CN] == "true"
+        console.info("useCnDomain", useCnDomain)
+    }
+
+    private val tokenStorageKey = "plugin-googletranslation-token"
+    private fun translateUsingCachedToken(query: Query) : Promise<String> {
+        return Promise { resolve, reject ->
+            localStorage[tokenStorageKey]?.let { token ->
+                console.info("Translate using cached google token $token")
+                translateWithToken(query, token).then {
+                    resolve(googleTranslationRenderer.render(it, token))
+                }.catch(reject)
+            } ?: run {
+                reject(IllegalStateException("No cached google token available"))
+            }
+        }
+    }
+
+    private fun translateUsingNewToken(query: Query): Promise<String> {
         return getToken().then { token ->
+            console.info("Translate using new google token $token")
+            localStorage[tokenStorageKey] = token
             translateWithToken(query, token).then {
                 googleTranslationRenderer.render(it, token)
             }.catch {
@@ -51,11 +82,6 @@ class GoogleTranslationProvider constructor(
         }.catch {
             renderFailure(id(), sourceUrl(query), query, it)
         }
-    }
-
-    override fun updateOptions(options: MetaOptions) {
-        useCnDomain = options[OPTION_USE_GOOGLE_CN] == "true"
-        console.info("useCnDomain", useCnDomain)
     }
 
     private fun getToken() = Promise<String> { resolve, reject ->
