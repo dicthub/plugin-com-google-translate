@@ -41,7 +41,7 @@ class GoogleTranslationProvider constructor(
             )
     )
 
-    override fun canTranslate(query: Query) = query.getFrom() != query.getTo()
+    override fun canTranslate(query: Query) = true
 
     override fun translate(query: Query): Promise<String> {
         return Promise { resolve, _ ->
