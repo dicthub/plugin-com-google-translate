@@ -9,14 +9,14 @@ class GoogleTranslationParser {
         val firstLine = json.getOrNull(0) as? Array<*> ?: return null
 
         val text = firstLine.getOrNull(0)?.let { it as? Array<*> } ?: return null
-        val pron = firstLine.getOrNull(1) ?.let { it as? Array<*> } ?: return null
+        val pron = firstLine.getOrNull(1) ?.let { it as? Array<*> }
 
 
         return GoogleTranslation(
                 sourceUrl = sourceUrl,
                 query = text[1] as String,
                 translation = text[0] as String,
-                pron = pron[3] as String?,
+                pron = pron?.getOrNull(3) as? String,
                 from = from,
                 to = to,
                 details = json.getOrNull(1)?.let { it as? Array<*> }?.let { parseTranslationDetails(it) } ?: emptyList())
